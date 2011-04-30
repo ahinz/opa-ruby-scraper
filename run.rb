@@ -46,21 +46,23 @@ def scrape_chunk(list, header)
     
     begin
       scrape_data = Philly::scrape(tcode)
+
+      header_keys = header.values.sort
+      output_headers = header_keys.map { |k| header.invert[k] } + scrape_data.keys + ["tcode"] unless output_headers
+      l + scrape_data.values + [tcode]
     rescue Exception => e
       puts "Failed to scrape"
       puts list
+      nil
     end
-
-    header_keys = header.values.sort
-    output_headers = header_keys.map { |k| header.invert[k] } + scrape_data.keys + ["tcode"] unless output_headers
-    l + scrape_data.values + [tcode]
-  end
+  end.select { |x| x }
 
   [output_headers] + data
 end
 
 def process_as_chunks(list,header,file,chunksize=1000,startat=0,goto=-1)
   chunks = chunk(list,chunksize)[startat..goto]
+  fullsize = list.size
   puts "About to process #{chunks.size} chunks (starting at #{startat}, going to #{goto}) (chunk size of #{chunksize})"
   end_offset = if (goto == -1) 
                  0 
@@ -71,8 +73,8 @@ def process_as_chunks(list,header,file,chunksize=1000,startat=0,goto=-1)
   padsize = chunks.size.size
 
   chunks.each_with_index do |lst,idx|
-    puts "Processing chunk #{idx + startat} of #{chunks.size-1 + startat + end_offset}"
-    process_chunk(lst, header, "#{file}_#{pad((idx + startat).to_s,padsize)}_of_#{chunks.size-1 + startat + end_offset}.csv")
+    puts "Processing chunk #{idx + startat} of #{chunks.size-1 + startat}"
+    process_chunk(lst, header, "#{file}_#{pad((idx + startat).to_s,padsize)}_of_#{fullsize}.csv")
   end
 
 end
@@ -103,8 +105,6 @@ chunksize = get_or_else(arghash, "-chunk", 100)
 
 puts "Options: -from, -to, -output [required], -chunk"
 raise "You must specify -ouput file prefix" unless outp
-
-lines = lines[0..20]
 
 process_as_chunks(lines, header, outp, chunksize.to_i, from, to)
 
